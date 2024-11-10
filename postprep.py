@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import sys
+import mimetypes
 import argparse
 
 def classify(filename):
-    return None
+    # Return the mimetype based on the filename
+    return mimetypes.guess_type(filename)[0]
 
 def main():
     # Prepare command-line arguments for parsing later
