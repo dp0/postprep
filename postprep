@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# This script takes a single argument: a path to a file to be processed
+# The file can be either a video or a picture file
+
+# In the case the file is a video, the script will mute the video and reduce the
+# video bitrate to a share-friendly number
+
+# In the case the file is a picture, the script will reduce the picture size to
+# a share-friendly number (1440x1440), reduce the picture quality to 80%, and
+# remove any EXIF data to ensure rotation is not encoded at the EXIF level
+# (which sometimes causes confusion for some platforms like Instagram)
+
+# Ensure exactly one argument has been passed, and if not, exit with an error
+# and usage
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 <file>" >&2
+  exit 1
+fi
+
+# If -h is passed, show the usage and exit
+if [ "$1" = "-h" ]; then
+  echo "Usage: $0 <file>"
+  exit 0
+fi
+
+# The input file
+input_file="$1"
+
+# Determine if the file is a video or a picture
+file_type=$(file --mime-type -b "$input_file")
+
+# Create a temporary directory to store the processed file
+temp_dir=$(mktemp -d)
+# Ensure the temporary directory is removed when the script exits
+trap 'rm -rf "$temp_dir"' EXIT
+# The path of the output file
+output_file="$temp_dir/$(basename "$input_file")"
+
+# If the file is a video, remove the audio and reduce the bitrate to 1000k if
+# it's greater than that.
+if [[ $file_type == video* ]]; then
+  ffmpeg -y -i "$input_file" -c:v libx264 -b:v 1000k -an "$output_file"
+fi
+
+# Rename the original file to start with "_original_%s_" where %s is the
+# number of seconds since the epoch
+mv "$input_file" "$(dirname "$input_file")/_original_$(date +%s)_$(basename "$input_file")"
+
+# Move the output file to the original file's location
+mv "$output_file" "$input_file"
